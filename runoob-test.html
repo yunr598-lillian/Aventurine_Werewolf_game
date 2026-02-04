@@ -1,727 +1,0 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aventurine's Werewolf Game</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
-        
-        :root {
-            --aventurine-gold: #D4AF37;
-            --aventurine-dark: #1A1A1A;
-            --aventurine-light: #F4E4BC;
-            --bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-            --glass: rgba(255, 255, 255, 0.05);
-            --neon-glow: 0 0 10px rgba(212, 175, 55, 0.5);
-        }
-        
-        * { box-sizing: border-box; user-select: none; }
-        
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Noto Sans SC', sans-serif;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: var(--aventurine-light);
-        }
-        
-        #game-container {
-            width: 100%;
-            max-width: 450px;
-            height: 600px;
-            background: var(--bg-gradient);
-            border: 2px solid var(--aventurine-gold);
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: var(--aventurine-dark);
-            transition: opacity 0.5s ease;
-            z-index: 10;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .hidden { opacity: 0; pointer-events: none; z-index: -1; }
-        
-        .avatar-large {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border: 3px solid var(--aventurine-gold);
-            box-shadow: var(--neon-glow);
-            margin-bottom: 15px;
-            object-fit: cover;
-            background-color: #333;
-        }
-        
-        h1, h2 { color: var(--aventurine-gold); margin: 10px 0; text-align: center; }
-        p { font-size: 14px; color: #ccc; text-align: center; max-width: 80%; }
-        
-        .jelly-btn {
-            background: linear-gradient(45deg, #D4AF37, #FDB931);
-            color: #000;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 25px;
-            cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            animation: jelly 2s infinite;
-        }
-        .jelly-btn:active { transform: scale(0.9); }
-        @keyframes jelly {
-            0%, 100% { transform: scale(1, 1); }
-            25% { transform: scale(0.9, 1.1); }
-            50% { transform: scale(1.1, 0.9); }
-            75% { transform: scale(0.95, 1.05); }
-        }
-        
-        input[type="text"] {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid var(--aventurine-gold);
-            color: white;
-            padding: 10px;
-            border-radius: 8px;
-            width: 80%;
-            margin-top: 10px;
-            text-align: center;
-        }
-        
-        .player-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 5px;
-            width: 100%;
-            padding: 10px;
-            background: rgba(0,0,0,0.3);
-        }
-        .player-token {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-        }
-        .player-img {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            border: 2px solid #555;
-            background: #222;
-            overflow: hidden;
-            transition: all 0.2s;
-        }
-        .player-img img { width: 100%; height: 100%; object-fit: cover; }
-        .player-token.active .player-img { border-color: var(--aventurine-gold); box-shadow: 0 0 5px var(--aventurine-gold); }
-        .player-token.dead .player-img { filter: grayscale(100%); opacity: 0.5; border-color: red; }
-        .player-name { font-size: 9px; margin-top: 2px; text-align: center; overflow: hidden; white-space: nowrap; width: 100%; text-overflow: ellipsis; }
-        
-        #game-area {
-            flex: 1;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-y: auto;
-            padding-bottom: 80px;
-        }
-        
-        .log-box {
-            width: 95%;
-            flex: 1;
-            overflow-y: auto;
-            font-size: 13px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .log-entry { padding: 8px; border-radius: 6px; background: rgba(255,255,255,0.05); line-height: 1.4; }
-        .log-entry strong { color: var(--aventurine-gold); }
-        .log-system { color: #888; font-style: italic; text-align: center; border: none; background: transparent; padding-top: 10px; }
-        
-        .card-container { perspective: 1000px; width: 150px; height: 220px; margin: 20px auto; cursor: pointer; }
-        .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.8s; transform-style: preserve-3d; }
-        .flipped .card-inner { transform: rotateY(180deg); }
-        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--aventurine-gold); background: #000; box-shadow: var(--neon-glow); flex-direction: column;}
-        .card-front { color: var(--aventurine-gold); font-size: 40px; }
-        .card-back { transform: rotateY(180deg); color: #fff; padding: 10px; }
-        .role-icon { font-size: 40px; margin-bottom: 10px; }
-        
-        .action-panel {
-            width: 100%;
-            background: #111;
-            border-top: 1px solid var(--aventurine-gold);
-            padding: 10px;
-            max-height: 220px;
-            overflow-y: auto;
-            position: absolute;
-            bottom: 0;
-            z-index: 20;
-        }
-        
-        .option-btn {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 6px;
-            background: rgba(212, 175, 55, 0.1);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: #ddd;
-            border-radius: 5px;
-            text-align: left;
-            font-size: 13px;
-            cursor: pointer;
-        }
-        .option-btn:hover { background: rgba(212, 175, 55, 0.3); }
-        
-        .modal {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.92);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
-        .modal.show { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            background: #1a1a1a;
-            border: 1px solid var(--aventurine-gold);
-            padding: 20px;
-            border-radius: 10px;
-            max-height: 80%;
-            overflow-y: auto;
-            width: 100%;
-            color: #eee;
-            white-space: pre-wrap;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .close-btn {
-            position: absolute;
-            top: 15px; right: 15px;
-            color: var(--aventurine-gold);
-            font-size: 28px;
-            cursor: pointer;
-            background: none; border: none;
-        }
-        
-        .res-img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--aventurine-gold); overflow: hidden; background: #333;}
-        .res-img img { width: 100%; height: 100%; object-fit: cover; }
-        .result-avatars { display: flex; gap: 30px; margin-top: 20px; }
-        .res-av { text-align: center; cursor: pointer; }
-        
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: var(--aventurine-gold); border-radius: 3px; }
-    </style>
-</head>
-
-<body>
-
-    <div id="game-container">
-        <div id="screen-start" class="screen">
-            <img src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp" class="avatar-large">
-            <h2>—<span style="font-size:12px; color:#888;"> (Aventurine)</span></h2>
-            <p>Œ@ÀÂ\*/Ü'<br>Çej©*8>~ </p>
-            <p style="font-size:10px; color:var(--aventurine-gold);">*õw ö—*</p>
-            <button class="jelly-btn" onclick="goToSetup()"><≤  we©¸∫@</button>
-        </div>
-
-        <div id="screen-setup" class="screen hidden">
-            <div id="user-avatar-preview" class="avatar-large" onclick="document.getElementById('avatar-upload').click()" style="display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;">
-                <img id="preview-img" src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/69831b347b227.webp" style="width:100%; height:100%; object-fit:cover;">
-            </div>
-            <input type="file" id="avatar-upload" hidden accept="image/*" onchange="handleAvatarUpload(this)">
-            <p>π π4œÔÂ
- gG<br>çŸÍÒw*W'~</p>
-            <input type="text" id="user-name-input" value="–" maxlength="8">
-            <button class="jelly-btn" onclick="startGame()">n§e@ </button>
-        </div>
-
-        <div id="screen-game" class="screen hidden" style="justify-content: flex-start; padding: 0;">
-            <div class="player-grid" id="player-grid"></div>
-            <div id="game-area">
-                <div id="role-reveal-area" style="text-align: center; width: 100%; display:none;">
-                    <h3>`Ñ´˝L</h3>
-                    <div class="card-container" onclick="this.classList.toggle('flipped')">
-                        <div class="card-inner">
-                            <div class="card-front">`<br><span style="font-size:12px">π˚˚l</span></div>
-                            <div class="card-back" id="user-role-card"></div>
-                        </div>
-                    </div>
-                    <button class="jelly-btn" onclick="finishRoleView()" style="padding: 8px 20px; font-size:12px;">∞OÜ</button>
-                </div>
-                <div id="game-log" class="log-box">
-                    <div class="log-system">--- 8 À ---</div>
-                </div>
-            </div>
-            <div id="action-panel" class="action-panel" style="display:none;"></div>
-        </div>
-
-        <div id="screen-end" class="screen hidden">
-            <h1 id="winner-title">8”_</h1>
-            <p id="end-reason">...</p>
-            <div class="log-box" id="end-roles" style="height: 150px; flex:none; width:90%;"></div>
-            <div class="result-avatars">
-                <div class="res-av" onclick="showReflection('char')">
-                    <div class="res-img"><img src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp"></div>
-                    <p>—Ñ<br>©</p>
-                </div>
-                <div class="res-av" onclick="showReflection('user')">
-                    <div class="res-img" id="user-end-avatar-box">=1</div>
-                    <p>`Ñ<br>©</p>
-                </div>
-            </div>
-            <button class="jelly-btn" onclick="location.reload()" style="margin-top:20px; transform: scale(0.8);">çe @</button>
-        </div>
-
-        <div id="thought-modal" class="modal">
-            <button class="close-btn" onclick="closeModal()">◊</button>
-            <div class="modal-content" id="modal-text"></div>
-        </div>
-    </div>
-
-    <script>
-        const CHAR_NAME = "—";
-        let USER_NAME = "–";
-        let USER_AVATAR = "https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/69831b347b227.webp";
-        
-        const ROLE_POOL = ['¸∫', '¸∫', 'Ñ ∂', 'sÎ', '∫', 'àk', 's', 's', 's', 's'];
-        
-        const PLAYERS_DATA = [
-            { id: 0, name: CHAR_NAME, img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp' },
-            { id: 1, name: USER_NAME, img: 'user' }, 
-            { id: 2, name: 'X', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d466a5d9a.webp' },
-            { id: 3, name: 'Ò', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d46693fbb.webp' },
-            { id: 4, name: '…e', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d464aa5e1.webp' },
-            { id: 5, name: '·‡', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4678cf1b.webp' },
-            { id: 6, name: 'Â', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d47429435.webp' },
-            { id: 7, name: 'ÂÙ', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d474a0156.webp' },
-            { id: 8, name: '9R', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4755ef96.webp' },
-            { id: 9, name: ''—T', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d47800531.webp' }
-        ];
-        
-        let players = [];
-        let round = 1;
-        let turnPhase = 'setup'; 
-        let gameLog = document.getElementById('game-log');
-        let actionPanel = document.getElementById('action-panel');
-        let playerGrid = document.getElementById('player-grid');
-        
-        let nightKillTarget = -1;
-        let witchPoisonTarget = -1;
-        let witchHealUsed = false;
-        let witchPoisonUsed = false;
-        let guardTarget = -1;
-        let lastGuardTarget = -1;
-        let savedByWitch = false;
-        
-        function handleAvatarUpload(input) {
-            if (input.files && input.files[0]) {
-              const reader = new FileReader();
-              reader.onload = function(e) {
-              USER_AVATAR = e.target.result;
-              document.getElementById('preview-img').src = USER_AVATAR;
-              }
-              reader.readAsDataURL(input.files[0]);
-            }
-        }
-        
-        function goToSetup() {
-            document.getElementById('screen-start').classList.add('hidden');
-            document.getElementById('screen-setup').classList.remove('hidden');
-        }
-        
-        function startGame() {
-            const input = document.getElementById('user-name-input').value;
-            if(input.trim()) USER_NAME = input.trim();
-            PLAYERS_DATA[1].name = USER_NAME;
-            
-            let shuffledRoles;
-            let attempt = 0;
-            do {
-              shuffledRoles = [...ROLE_POOL].sort(() => Math.random() - 0.5);
-              attempt++;
-            } while(shuffledRoles[1] === 's' && attempt < 5 && Math.random() < 0.6);
-        
-            players = PLAYERS_DATA.map((p, i) => ({
-              ...p,
-              role: shuffledRoles[i],
-              alive: true,
-              isUser: i === 1
-            }));
-        
-            document.getElementById('screen-setup').classList.add('hidden');
-            document.getElementById('screen-game').classList.remove('hidden');
-            document.getElementById('user-end-avatar-box').innerHTML = `<img src="${USER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">`;
-            
-            renderPlayers();
-            showRoleReveal();
-        }
-        
-        function showRoleReveal() {
-            const user = players[1];
-            const cardBack = document.getElementById('user-role-card');
-            const iconMap = {'¸∫':'=:', 'Ñ ∂':'=.', 'sÎ':'>Í', '∫':'=+', 'àk':'=·', 's':'=q'};
-            
-            cardBack.innerHTML = `<div class="role-icon">${iconMap[user.role]}</div><h3>${user.role}</h3><p style="font-size:10px;">∞óœ}´˝Ê~</p>`;
-            document.getElementById('role-reveal-area').style.display = 'block';
-            document.getElementById('game-log').style.display = 'none';
-        }
-        
-        function finishRoleView() {
-            document.getElementById('role-reveal-area').style.display = 'none';
-            document.getElementById('game-log').style.display = 'flex';
-            startNight();
-        }
-        
-        function renderPlayers() {
-            playerGrid.innerHTML = '';
-            players.forEach(p => {
-              let div = document.createElement('div');
-              div.className = `player-token ${p.alive ? 'active' : 'dead'}`;
-              let imgUrl = p.id === 1 ? USER_AVATAR : p.img;
-              div.innerHTML = `<div class="player-img"><img src="${imgUrl}"></div><div class="player-name">${p.id+1}.${p.name}</div>`;
-              div.onclick = () => showPlayerThought(p);
-              playerGrid.appendChild(div);
-            });
-        }
-        
-        function showPlayerThought(player) {
-            if(!player.alive) { openModal(`<strong>${player.name}</strong>\n\nÚœª:Íi *zßM	...`); return; }
-            
-            const thoughtsDB = {
-              '—': ["Ÿ@(íb	£", "ÍÅy°	bÜÑ@", "Çú`/¸∞óœ}>Ù+©ìOÜ", `${USER_NAME}weàJÅÅoña`],
-              'X': ["&&}œ˚0ÜO&ÑsS", "Ÿ@Ñ6 á...ÓM*P¬", "¸∫˝˝ÎπÍñ", "ÍÅ/T±H˝L"],
-              '…e': ["ˆŸ§∫Ñ;ëh/", ""/‡ÔQoÑ$v/£* Ù—FÑ∂", "Âdˆâÿø/.ˆ", "˙éÇáf`/¸ÑÇá(
-G"],
-              ''—T': ["ŸÕNß8	¿H}©ÑÛﬁzÙŸÜ", "!ﬂáô‘Ÿ	ÜÎπ”_'", "l~l~l~", "`Ï˝/ª‹ŸHÄU˝˙e"],
-              'Â': ["Èè≈M4 »´Ì", "˜⁄ûb˘Ö√", "Çú`	jÂS", "?* ÑIâg ŸG˜å"],
-              'ÂÙ': ["'∂˝˝ås¯Å5∂...", "Ÿ1/ÂÂÙÑà	£Ñ8", "ŸñL.Ÿ ZÑ◊≥", "˜¯·Ñ°	Ù"],
-              '·‡': ["(Ÿ*L@Ã`˝ÿ˙¿H„˜", "∫√/ ÕßÑDß/…˜", "§b(`Ñ´˝bÑá§", "+**√Ê*j/üj"],
-              '9R': ["...≈ŸÕ8+", "›âÿ‘É}Ù", "√Ã	@", "£*∫<^˘FÛ˘ªÊ"],
-              'Ò': ["‡£Ñ#N¡m'", "‡∫H	”@Úö", "`Ï*5ÜÛ8ÜŸÃ", "¸1M±‚"]
-            };
-            
-            let pool = thoughtsDB[player.name] || ["(-..."];
-            let txt = pool[Math.floor(Math.random() * pool.length)];
-            openModal(`<strong>${player.name}ÑÛ’</strong>\n\n${txt}`);
-        }
-        
-        function addLog(text, isSystem=false) {
-            let div = document.createElement('div');
-            div.className = isSystem ? 'log-system' : 'log-entry';
-            div.innerHTML = text;
-            gameLog.appendChild(div);
-            gameLog.scrollTop = gameLog.scrollHeight;
-        }
-        
-        function startNight() {
-            addLog(`<br>--- , ${round}  ---`, true);
-            addLog(")—˜Ì<@	©∂˜9n´˝L®...");
-            nightKillTarget = -1; guardTarget = -1; witchPoisonTarget = -1; savedByWitch = false;
-        
-            // NPC ¸∫L®Çú©∂/¸∫	
-            if(players[1].role !== '¸∫') {
-                let targets = players.filter(p => p.alive && p.role !== '¸∫');
-                let smartTargets = targets.filter(p => p.name === '…e' || p.role === 'Ñ ∂');
-                if(smartTargets.length > 0 && Math.random() > 0.5) {
-                    nightKillTarget = smartTargets[0].id;
-                } else if(targets.length > 0) {
-                    nightKillTarget = targets[Math.floor(Math.random()*targets.length)].id;
-                }
-            }
-        
-            processUserNightAction();
-        }
-        
-        function processUserNightAction() {
-            const user = players[1];
-            if(!user.alive) { 
-              addLog("`Ú˙@uBn(Jz¬...	");
-              setTimeout(simulateNight, 1500); 
-              return; 
-            }
-            
-            let options = [];
-            if(user.role === '¸∫') {
-              addLog("`Ñ4(ó@` Z:m¡");
-              players.forEach(p => { if(p.alive && p.role !== '¸∫') options.push({label: `≠˚ ${p.id+1}˜ ${p.name}`, val: p.id}); });
-              showOptions(options, (val) => { nightKillTarget = val; simulateNight(); });
-            } else if(user.role === 'Ñ ∂') {
-              addLog("4v(Í¡`ÛÑbÓ");
-              players.forEach(p => { if(p.alive && p.id !== 1) options.push({label: `Âå ${p.id+1}˜ ${p.name}`, val: p.id}); });
-              showOptions(options, (val) => { 
-                let isWolf = players[val].role === '¸∫';
-                alert(`Âå”ú${players[val].name} / ${isWolf ? '¸∫ (O∫)' : '}∫'}`);
-                simulateNight(); 
-              });
-            } else if(user.role === 'sÎ') {
-              processWitchAction();
-            } else if(user.role === 'àk') {
-              addLog("˛LÚ} Z`Åà§ÑâÅ");
-              players.forEach(p => { if(p.alive && p.id !== lastGuardTarget) options.push({label: `à§ ${p.id+1}˜ ${p.name}`, val: p.id}); });
-              options.push({label: "zàà§˚U∫	", val: -1});
-              showOptions(options, (val) => { guardTarget = val; lastGuardTarget = val; simulateNight(); });
-            } else {
-              addLog("`/sóŒd3`˘'Ü´Pa…...");
-              setTimeout(simulateNight, 1500); 
-            }
-        }
-        
-        function processWitchAction() {
-            if (!witchHealUsed && nightKillTarget !== -1) {
-                let deadName = players[nightKillTarget].name;
-                if (nightKillTarget === 1) {
-                    addLog(` Z´@Ñ/`1é˝ÍQ`Í˝	È/&“∫`);
-                    askPoison();
-                } else {
-                    addLog(` Z <strong style="color:var(--aventurine-gold)">${deadName}</strong> ´@Ü`Å(uoQ÷`);
-                    showOptions([
-                        {label: "(uoQ∫", val: 'heal'},
-                        {label: "Q€e“o6µ", val: 'no_heal'}
-                    ], (choice) => {
-                        if (choice === 'heal') {
-                            savedByWitch = true;
-                            witchHealUsed = true;
-                            simulateNight(); // QÜ∫ ,˝ç“∫∆ƒ	
-                        } else {
-                            askPoison();
-                        }
-                    });
-                }
-            } else {
-                askPoison();
-            }
-        }
-        
-        function askPoison() {
-            if (!witchPoisonUsed) {
-                addLog("`K-Ñ“ocÆÆ—Î ZÅ&p");
-                let opts = [{label: "(“o", val: -1}];
-                players.forEach(p => { if(p.alive && p.id !== 1) opts.push({label: `“{ ${p.id+1}˜ ${p.name}`, val: p.id}); });
-                showOptions(opts, (val) => {
-                    if (val !== -1) {
-                        witchPoisonTarget = val;
-                        witchPoisonUsed = true;
-                    }
-                    simulateNight();
-                });
-            } else {
-                addLog("`Ú°	“o Zsâ¶«");
-                setTimeout(simulateNight, 1000);
-            }
-        }
-        
-        function simulateNight() {
-            hideOptions();
-            
-            let deadTonight = [];
-            // ”ó{°;ë¸∫@∫ - àkà§ - sÎQ∫
-            if(nightKillTarget !== -1 && nightKillTarget !== guardTarget && !savedByWitch) {
-                deadTonight.push(nightKillTarget);
-            }
-            // “o‡∆à§
-            if(witchPoisonTarget !== -1) {
-                deadTonight.push(witchPoisonTarget);
-            }
-            
-            [...new Set(deadTonight)].forEach(id => { if(id !== -1) players[id].alive = false; });
-            
-            setTimeout(startDay, 1500, [...new Set(deadTonight)]);
-        }
-        
-        function startDay(deadList) {
-            renderPlayers();
-            addLog(`<br>--- , ${round} ) ---`, true);
-            if(deadList.length > 0) {
-              let deadNames = deadList.map(id => players[id].name).join(', ');
-              addLog(`(Z/*Ë€ÑZ<strong style="color:red;">${deadNames}</strong> LÜ`);
-            } else {
-              addLog("(Z/*sâ@	∫˝0Ü )Ñ*3");
-            }
-            
-            if(checkWinCondition()) return;
-            setTimeout(() => startSpeeches(0), 1000);
-        }
-        
-        function getNpcSpeech(p) {
-            let suspects = players.filter(v => v.alive && v.id !== p.id);
-            let target = suspects.length > 0 ? suspects[Math.floor(Math.random()*suspects.length)] : {name: "z"};
-            
-            if(p.name === '—') {
-              if(p.role === '¸∫') {
-                return [`Œ@ÀÏ+ŸH@Ô/o`, `…ó${target.name}*˘≤Ê`, `·Ÿ§3ZT`, `…eYàŸﬁ°í`][round % 4];
-              } else {
-                return [`	∫(ÄàŸ£`, `À£*${target.name}bbﬂ˘L ä´˝`, `/^LÛ{1+ï`, `;Çú{Ü£1/:
- jÑ∫Ü`][round % 4];
-              }
-            }
-            if(p.name === '…e') {
-              return [`ˆ(ßMÑ— Î‡;ëÔ `, `˙éÓM7,${target.name}ÑL:Å'`, `"˙ÆÕπsË˜∆∆,Ñ∫`, `/Ì<©∂F	P`][round % 4];
-            }
-            if(p.name === 'X') {
-              return [`&&Ù£*∫´
-	¸ÑsS`, `Ÿ@°¿H	(Ñ·o˙Æ3 K`, `/}∫ï˙ª`ÏîÑ`, `:Ü}∫Ñ‹)${target.name}≈{˙@`][round % 4];
-            }
-            return `/}∫«`;
-        }
-        
-        function startSpeeches(playerIndex) {
-            if(playerIndex >= players.length) { startVoting(); return; }
-            const p = players[playerIndex];
-            
-            if(!p.alive) { startSpeeches(playerIndex + 1); return; }
-            
-            if(p.isUser) {
-              generateUserSpeechOptions((speech) => {
-              addLog(`<strong>${p.id+1}.${p.name}:</strong> ${speech}`);
-              startSpeeches(playerIndex + 1);
-              });
-            } else {
-              let speech = getNpcSpeech(p);
-              setTimeout(() => {
-              addLog(`<strong>${p.id+1}.${p.name}:</strong> ${speech}`);
-              startSpeeches(playerIndex + 1);
-              }, 1000 + Math.random() * 500);
-            }
-        }
-        
-        function generateUserSpeechOptions(callback) {
-            addLog("n0`Ü˜	È`Ñ— ");
-            let opts = [
-              "S» 	*Ü.../}∫«",
-              "/s˝˝Îπ”_ÿÅﬁªô•J...",
-              "…ó—;— Ù(ÑàÔë"
-            ];
-            if(players[4].alive) opts.push("¯·…eYàÑ$≠,÷Ñ∆°");
-            if(players[1].role === 'Ñ ∂') opts.push("/Ñ ∂(ZåÜ·");
-        
-            let displayOpts = opts.sort(() => 0.5 - Math.random()).slice(0, 4);
-            showOptions(displayOpts.map(t => ({label: t, val: t})), (val) => { hideOptions(); callback(val); });
-        }
-        
-        function startVoting() {
-            if(!players[1].alive) {
-              addLog("<br>--- ïh6µ (`Ú˙@) ---", true);
-              setTimeout(() => resolveVotes(-1), 2000);
-              return;
-            }
-            addLog("<br>--- ïh6µ ---", true);
-            let options = [];
-            players.forEach(p => { if(p.alive && p.id !== 1) options.push({label: `ïŸ ${p.id+1}˜ ${p.name}`, val: p.id}); });
-            options.push({label: "C", val: -1});
-            showOptions(options, (userVote) => { hideOptions(); resolveVotes(userVote); });
-        }
-        
-        function resolveVotes(userVote) {
-            let voteCounts = {};
-            players.forEach(p => voteCounts[p.id] = 0);
-            players.forEach(p => {
-              if(!p.alive) return; 
-              if(p.isUser) { if(userVote !== -1) voteCounts[userVote]++; }
-              else {
-                let targets = players.filter(t => t.alive && t.id !== p.id);
-                if(targets.length > 0) voteCounts[targets[Math.floor(Math.random()*targets.length)].id]++;
-              }
-            });
-        
-            let maxVotes = 0, eliminated = -1, isTie = false;
-            for(let pid in voteCounts) {
-              if(voteCounts[pid] > maxVotes) { maxVotes = voteCounts[pid]; eliminated = pid; isTie = false; }
-              else if(voteCounts[pid] === maxVotes && maxVotes > 0) isTie = true;
-            }
-        
-            let summary = "<strong>ïh”ú</strong><br>";
-            for(let pid in voteCounts) { if(voteCounts[pid] > 0) summary += `${players[pid].name}: ${voteCounts[pid]}h<br>`; }
-            addLog(summary, true);
-        
-            if(eliminated !== -1 && !isTie) {
-              addLog(`œ«lï<strong>${players[eliminated].name}</strong> ´>˙@`);
-              players[eliminated].alive = false;
-            } else {
-              addLog("sh‡∫óh‡∫˙@");
-            }
-            
-            renderPlayers();
-            if(checkWinCondition()) return;
-            round++; 
-            setTimeout(startNight, 2000);
-        }
-        
-        function checkWinCondition() {
-            let wolves = players.filter(p => p.alive && p.role === '¸∫').length;
-            let goods = players.filter(p => p.alive && p.role !== '¸∫').length;
-            if(wolves === 0) { endGame('}∫5%‹)'); return true; }
-            if(wolves >= goods) { endGame('¸∫5%‹)'); return true; }
-            return false;
-        }
-        
-        function endGame(reason) {
-            turnPhase = 'end';
-            setTimeout(() => {
-              document.getElementById('screen-game').classList.add('hidden');
-              document.getElementById('screen-end').classList.remove('hidden');
-              document.getElementById('winner-title').innerText = reason;
-              document.getElementById('end-reason').innerText = `8(, ${round} )=U`;
-              document.getElementById('end-roles').innerHTML = players.map(p => `<div>${p.name}: <strong style="color:var(--aventurine-gold)">${p.role}</strong> ${p.alive ? '' : '(°)'}</div>`).join('');
-            }, 1500);
-        }
-        
-        function showOptions(opts, callback) {
-            actionPanel.innerHTML = '';
-            opts.forEach(o => {
-              let btn = document.createElement('button');
-              btn.className = 'option-btn';
-              btn.innerText = o.label;
-              btn.onclick = () => callback(o.val);
-              actionPanel.appendChild(btn);
-            });
-            actionPanel.style.display = 'block';
-        }
-        
-        function hideOptions() { actionPanel.style.display = 'none'; }
-        
-        function showReflection(who) { 
-            if(who === 'char') openModal(`<strong>—Ñ©</strong>\n\nŒ@${USER_NAME}Ÿ:8Ô/æi@`™õÛÅ›§£M…eYàÔ/ÕÕóàõÊb!ÇÍ	Ï$*UÏ©`);
-            else openModal(`<strong>${USER_NAME}Ñ©</strong>\n\n»é”_Ü...Ñ4}€:¿HÅﬁ©*>~Ñ8˝ÅŸH9P`);
-        }
-        
-        function openModal(text) {
-            document.getElementById('modal-text').innerHTML = text.replace(/\n/g, '<br>');
-            document.getElementById('thought-modal').classList.add('show');
-        }
-        function closeModal() { document.getElementById('thought-modal').classList.remove('show'); }
-    </script>
-
-</body>
-
-</html>
