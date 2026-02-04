@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aventurine's Werewolf Game</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+
+    :root {
+        --aventurine-gold: #D4AF37;
+        --aventurine-dark: #1A1A1A;
+        --aventurine-light: #F4E4BC;
+        --bg-gradient: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+        --glass: rgba(255, 255, 255, 0.05);
+        --neon-glow: 0 0 10px rgba(212, 175, 55, 0.5);
+    }
+
+    * { box-sizing: border-box; user-select: none; }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Noto Sans SC', sans-serif;
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: var(--aventurine-light);
+    }
+
+    #game-container {
+        width: 100%;
+        max-width: 450px;
+        height: 600px;
+        background: var(--bg-gradient);
+        border: 2px solid var(--aventurine-gold);
+        border-radius: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--aventurine-dark);
+        transition: opacity 0.5s ease;
+        z-index: 10;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .hidden { opacity: 0; pointer-events: none; z-index: -1; }
+
+    .avatar-large {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid var(--aventurine-gold);
+        box-shadow: var(--neon-glow);
+        margin-bottom: 15px;
+        object-fit: cover;
+        background-color: #333;
+    }
+
+    h1, h2 { color: var(--aventurine-gold); margin: 10px 0; text-align: center; }
+    p { font-size: 14px; color: #ccc; text-align: center; max-width: 80%; }
+
+    .jelly-btn {
+        background: linear-gradient(45deg, #D4AF37, #FDB931);
+        color: #000;
+        border: none;
+        padding: 12px 30px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 25px;
+        cursor: pointer;
+        margin-top: 20px;
+        box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        animation: jelly 2s infinite;
+    }
+    .jelly-btn:active { transform: scale(0.9); }
+    @keyframes jelly {
+        0%, 100% { transform: scale(1, 1); }
+        25% { transform: scale(0.9, 1.1); }
+        50% { transform: scale(1.1, 0.9); }
+        75% { transform: scale(0.95, 1.05); }
+    }
+
+    input[type="text"] {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid var(--aventurine-gold);
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        width: 80%;
+        margin-top: 10px;
+        text-align: center;
+    }
+
+    .player-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 5px;
+        width: 100%;
+        padding: 10px;
+        background: rgba(0,0,0,0.3);
+    }
+    .player-token {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+    }
+    .player-img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        border: 2px solid #555;
+        background: #222;
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+    .player-img img { width: 100%; height: 100%; object-fit: cover; }
+    .player-token.active .player-img { border-color: var(--aventurine-gold); box-shadow: 0 0 5px var(--aventurine-gold); }
+    .player-token.dead .player-img { filter: grayscale(100%); opacity: 0.5; border-color: red; }
+    .player-name { font-size: 9px; margin-top: 2px; text-align: center; overflow: hidden; white-space: nowrap; width: 100%; text-overflow: ellipsis; }
+
+    #game-area {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow-y: auto;
+        padding-bottom: 80px;
+    }
+
+    .log-box {
+        width: 95%;
+        flex: 1;
+        overflow-y: auto;
+        font-size: 13px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .log-entry { padding: 8px; border-radius: 6px; background: rgba(255,255,255,0.05); line-height: 1.4; }
+    .log-entry strong { color: var(--aventurine-gold); }
+    .log-system { color: #888; font-style: italic; text-align: center; border: none; background: transparent; padding-top: 10px; }
+
+    .card-container { perspective: 1000px; width: 150px; height: 220px; margin: 20px auto; cursor: pointer; }
+    .card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.8s; transform-style: preserve-3d; }
+    .flipped .card-inner { transform: rotateY(180deg); }
+    .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--aventurine-gold); background: #000; box-shadow: var(--neon-glow); flex-direction: column;}
+    .card-front { color: var(--aventurine-gold); font-size: 40px; }
+    .card-back { transform: rotateY(180deg); color: #fff; padding: 10px; }
+    .role-icon { font-size: 40px; margin-bottom: 10px; }
+
+    .action-panel {
+        width: 100%;
+        background: #111;
+        border-top: 1px solid var(--aventurine-gold);
+        padding: 10px;
+        max-height: 220px;
+        overflow-y: auto;
+        position: absolute;
+        bottom: 0;
+        z-index: 20;
+    }
+    
+    .option-btn {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 6px;
+        background: rgba(212, 175, 55, 0.1);
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        color: #ddd;
+        border-radius: 5px;
+        text-align: left;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    .option-btn:hover { background: rgba(212, 175, 55, 0.3); }
+
+    .modal {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.92);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .modal.show { opacity: 1; pointer-events: auto; }
+    .modal-content {
+        background: #1a1a1a;
+        border: 1px solid var(--aventurine-gold);
+        padding: 20px;
+        border-radius: 10px;
+        max-height: 80%;
+        overflow-y: auto;
+        width: 100%;
+        color: #eee;
+        white-space: pre-wrap;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    .close-btn {
+        position: absolute;
+        top: 15px; right: 15px;
+        color: var(--aventurine-gold);
+        font-size: 28px;
+        cursor: pointer;
+        background: none; border: none;
+    }
+
+    .res-img { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--aventurine-gold); overflow: hidden; background: #333;}
+    .res-img img { width: 100%; height: 100%; object-fit: cover; }
+    .result-avatars { display: flex; gap: 30px; margin-top: 20px; }
+    .res-av { text-align: center; cursor: pointer; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--aventurine-gold); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="screen-start" class="screen">
+        <img src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp" class="avatar-large">
+        <h2>砂金<span style="font-size:12px; color:#888;"> (Aventurine)</span></h2>
+        <p>“哎呀，朋友，工作太累了吧？<br>不如来陪我玩个小游戏放松一下？”</p>
+        <p style="font-size:10px; color:var(--aventurine-gold);">*抛起一枚金币*</p>
+        <button class="jelly-btn" onclick="goToSetup()">🎲 一起来玩狼人杀</button>
+    </div>
+
+    <div id="screen-setup" class="screen hidden">
+        <div id="user-avatar-preview" class="avatar-large" onclick="document.getElementById('avatar-upload').click()" style="display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden;">
+          <img id="preview-img" src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/69831b347b227.webp" style="width:100%; height:100%; object-fit:cover;">
+        </div>
+        <input type="file" id="avatar-upload" hidden accept="image/*" onchange="handleAvatarUpload(this)">
+        <p>点一点头像可以上传照片，<br>再给自己起个名字吧~</p>
+        <input type="text" id="user-name-input" value="小姐" maxlength="8">
+        <button class="jelly-btn" onclick="startGame()">确认入局 ✅</button>
+    </div>
+
+    <div id="screen-game" class="screen hidden" style="justify-content: flex-start; padding: 0;">
+        <div class="player-grid" id="player-grid"></div>
+        <div id="game-area">
+          <div id="role-reveal-area" style="text-align: center; width: 100%; display:none;">
+          <h3>你的身份牌</h3>
+          <div class="card-container" onclick="this.classList.toggle('flipped')">
+          <div class="card-inner">
+          <div class="card-front">♠️<br><span style="font-size:12px">点击翻转</span></div>
+          <div class="card-back" id="user-role-card"></div>
+          </div>
+          </div>
+          <button class="jelly-btn" onclick="finishRoleView()" style="padding: 8px 20px; font-size:12px;">记住了</button>
+          </div>
+          <div id="game-log" class="log-box">
+          <div class="log-system">--- 游戏开始 ---</div>
+          </div>
+        </div>
+        <div id="action-panel" class="action-panel" style="display:none;"></div>
+    </div>
+
+    <div id="screen-end" class="screen hidden">
+        <h1 id="winner-title">游戏结束</h1>
+        <p id="end-reason">...</p>
+        <div class="log-box" id="end-roles" style="height: 150px; flex:none; width:90%;"></div>
+        <div class="result-avatars">
+          <div class="res-av" onclick="showReflection('char')">
+          <div class="res-img"><img src="https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp"></div>
+          <p>砂金的<br>玩后感</p>
+          </div>
+          <div class="res-av" onclick="showReflection('user')">
+          <div class="res-img" id="user-end-avatar-box">🐱</div>
+          <p>你的<br>玩后感</p>
+          </div>
+        </div>
+        <button class="jelly-btn" onclick="location.reload()" style="margin-top:20px; transform: scale(0.8);">再来一局</button>
+    </div>
+
+    <div id="thought-modal" class="modal">
+        <button class="close-btn" onclick="closeModal()">×</button>
+        <div class="modal-content" id="modal-text"></div>
+    </div>
+</div>
+
+<script>
+    const CHAR_NAME = "砂金";
+    let USER_NAME = "小姐";
+    let USER_AVATAR = "https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/69831b347b227.webp";
+    
+    const ROLE_POOL = ['狼人', '狼人', '预言家', '女巫', '猎人', '守卫', '平民', '平民', '平民', '平民'];
+    
+    const PLAYERS_DATA = [
+        { id: 0, name: CHAR_NAME, img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4672b9bb.webp' },
+        { id: 1, name: USER_NAME, img: 'user' }, 
+        { id: 2, name: '托帕', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d466a5d9a.webp' },
+        { id: 3, name: '舒俱', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d46693fbb.webp' },
+        { id: 4, name: '拉帝奥', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d464aa5e1.webp' },
+        { id: 5, name: '翡翠', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4678cf1b.webp' },
+        { id: 6, name: '星期日', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d47429435.webp' },
+        { id: 7, name: '知更鸟', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d474a0156.webp' },
+        { id: 8, name: '丹恒', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d4755ef96.webp' },
+        { id: 9, name: '大黑塔', img: 'https://youke.xn--y7xa690gmna.cn/s1/2026/02/04/6982d47800531.webp' }
+    ];
+
+    let players = [];
+    let round = 1;
+    let turnPhase = 'setup'; 
+    let gameLog = document.getElementById('game-log');
+    let actionPanel = document.getElementById('action-panel');
+    let playerGrid = document.getElementById('player-grid');
+    
+    let nightKillTarget = -1;
+    let witchPoisonTarget = -1;
+    let witchHealUsed = false;
+    let witchPoisonUsed = false;
+    let guardTarget = -1;
+    let lastGuardTarget = -1;
+    let savedByWitch = false;
+
+    function handleAvatarUpload(input) {
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+          USER_AVATAR = e.target.result;
+          document.getElementById('preview-img').src = USER_AVATAR;
+          }
+          reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function goToSetup() {
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-setup').classList.remove('hidden');
+    }
+
+    function startGame() {
+        const input = document.getElementById('user-name-input').value;
+        if(input.trim()) USER_NAME = input.trim();
+        PLAYERS_DATA[1].name = USER_NAME;
+        
+        let shuffledRoles;
+        let attempt = 0;
+        do {
+          shuffledRoles = [...ROLE_POOL].sort(() => Math.random() - 0.5);
+          attempt++;
+        } while(shuffledRoles[1] === '平民' && attempt < 5 && Math.random() < 0.6);
+
+        players = PLAYERS_DATA.map((p, i) => ({
+          ...p,
+          role: shuffledRoles[i],
+          alive: true,
+          isUser: i === 1
+        }));
+
+        document.getElementById('screen-setup').classList.add('hidden');
+        document.getElementById('screen-game').classList.remove('hidden');
+        document.getElementById('user-end-avatar-box').innerHTML = `<img src="${USER_AVATAR}" style="width:100%; height:100%; object-fit:cover;">`;
+        
+        renderPlayers();
+        showRoleReveal();
+    }
+
+    function showRoleReveal() {
+        const user = players[1];
+        const cardBack = document.getElementById('user-role-card');
+        const iconMap = {'狼人':'🐺', '预言家':'🔮', '女巫':'🧪', '猎人':'🔫', '守卫':'🛡️', '平民':'👱'};
+        
+        cardBack.innerHTML = `<div class="role-icon">${iconMap[user.role]}</div><h3>${user.role}</h3><p style="font-size:10px;">记得藏好身份哦~</p>`;
+        document.getElementById('role-reveal-area').style.display = 'block';
+        document.getElementById('game-log').style.display = 'none';
+    }
+
+    function finishRoleView() {
+        document.getElementById('role-reveal-area').style.display = 'none';
+        document.getElementById('game-log').style.display = 'flex';
+        startNight();
+    }
+
+    function renderPlayers() {
+        playerGrid.innerHTML = '';
+        players.forEach(p => {
+          let div = document.createElement('div');
+          div.className = `player-token ${p.alive ? 'active' : 'dead'}`;
+          let imgUrl = p.id === 1 ? USER_AVATAR : p.img;
+          div.innerHTML = `<div class="player-img"><img src="${imgUrl}"></div><div class="player-name">${p.id+1}.${p.name}</div>`;
+          div.onclick = () => showPlayerThought(p);
+          playerGrid.appendChild(div);
+        });
+    }
+
+    function showPlayerThought(player) {
+        if(!player.alive) { openModal(`<strong>${player.name}：</strong>\n\n“（已经离场，只剩下一个空座位）...”`); return; }
+        
+        const thoughtsDB = {
+          '砂金': ["这局谁在撒谎呢？真有趣", "只要筹码够多，没有赢不了的局。", "如果你是狼，记得藏好尾巴，别让我抓住了。", `小${USER_NAME}看起来很困啊，要不要送杯咖啡？`],
+          '托帕': ["账账好像闻到了‘坏账’的味道。", "这局的收益率...目前看不太乐观。", "狼人能不能快点自首？", "只要不是赔钱，怎么都行。"],
+          '拉帝奥': ["零分。这群人的逻辑全是漏洞。", "愚蠢是无可救药的，尤其是那个一直发呆的家伙。", "若此时沉默，便是帮凶。", "基于概率学，你是狼的概率在上升。"],
+          '大黑塔': ["这种低级游戏有什么好玩的？我想回空间站了。", "模拟宇宙比这有意思多了，快点结束吧。", "转圈圈~转圈圈~转圈圈~", "你们都是傻瓜吗？这么简单都看不出来！！！"],
+          '星期日': ["秩序必将降临，谎言终将被揭穿。", "请诚实面对内心。", "如果你有罪，我会知道。", "愿太一的光辉照耀这片混沌。"],
+          '知更鸟': ["希望大家都能和平相处，不要吵架...", "这就是哥哥说的很有趣的游戏？", "这首歌，献给今晚的受害者。", "请相信我，我真的没有说谎。"],
+          '翡翠': ["在这个赌局里，你能付出什么代价？", "人心是最易操控的资产，真是廉价。", "交换吗？用你的身份换我的庇护。", "别太贪心哦，贪婪是原罪。"],
+          '丹恒': ["...我不擅长这种游戏，别看我。", "保持沉默比较好，多说多错。", "小心背后，有杀气。", "那个人眼神不对，但我不想惹麻烦。"],
+          '舒俱': ["无趣的挣扎，毁灭吧。", "无论怎么选，结局已定。", "你们太吵了，我想砸了这里。", "哼，弱者才抱团。"]
+        };
+        
+        let pool = thoughtsDB[player.name] || ["在思考中..."];
+        let txt = pool[Math.floor(Math.random() * pool.length)];
+        openModal(`<strong>${player.name}的想法：</strong>\n\n“${txt}”`);
+    }
+
+    function addLog(text, isSystem=false) {
+        let div = document.createElement('div');
+        div.className = isSystem ? 'log-system' : 'log-entry';
+        div.innerHTML = text;
+        gameLog.appendChild(div);
+        gameLog.scrollTop = gameLog.scrollHeight;
+    }
+
+    function startNight() {
+        addLog(`<br>--- 第 ${round} 夜 ---`, true);
+        addLog("天黑请闭眼，所有玩家请根据身份行动...");
+        nightKillTarget = -1; guardTarget = -1; witchPoisonTarget = -1; savedByWitch = false;
+
+        // NPC 狼人行动（如果玩家不是狼人）
+        if(players[1].role !== '狼人') {
+            let targets = players.filter(p => p.alive && p.role !== '狼人');
+            let smartTargets = targets.filter(p => p.name === '拉帝奥' || p.role === '预言家');
+            if(smartTargets.length > 0 && Math.random() > 0.5) {
+                nightKillTarget = smartTargets[0].id;
+            } else if(targets.length > 0) {
+                nightKillTarget = targets[Math.floor(Math.random()*targets.length)].id;
+            }
+        }
+
+        processUserNightAction();
+    }
+
+    function processUserNightAction() {
+        const user = players[1];
+        if(!user.alive) { 
+          addLog("（你已出局，灵魂漂浮在半空观战...）");
+          setTimeout(simulateNight, 1500); 
+          return; 
+        }
+        
+        let options = [];
+        if(user.role === '狼人') {
+          addLog("你的同伴在暗处看着你。今晚，谁将成为祭品？");
+          players.forEach(p => { if(p.alive && p.role !== '狼人') options.push({label: `袭击 ${p.id+1}号 ${p.name}`, val: p.id}); });
+          showOptions(options, (val) => { nightKillTarget = val; simulateNight(); });
+        } else if(user.role === '预言家') {
+          addLog("水晶球在闪烁，你想看清谁的真面目？");
+          players.forEach(p => { if(p.alive && p.id !== 1) options.push({label: `查验 ${p.id+1}号 ${p.name}`, val: p.id}); });
+          showOptions(options, (val) => { 
+            let isWolf = players[val].role === '狼人';
+            alert(`查验结果：${players[val].name} 是 ${isWolf ? '狼人 (坏人)' : '好人'}`);
+            simulateNight(); 
+          });
+        } else if(user.role === '女巫') {
+          processWitchAction();
+        } else if(user.role === '守卫') {
+          addLog("盾牌已备好，今晚你要守护谁的安宁？");
+          players.forEach(p => { if(p.alive && p.id !== lastGuardTarget) options.push({label: `守护 ${p.id+1}号 ${p.name}`, val: p.id}); });
+          options.push({label: "空守（不守护任何人）", val: -1});
+          showOptions(options, (val) => { guardTarget = val; lastGuardTarget = val; simulateNight(); });
+        } else {
+          addLog("你是平民，窗外风声鹤唳，你裹紧了被子睡觉...");
+          setTimeout(simulateNight, 1500); 
+        }
+    }
+
+    function processWitchAction() {
+        if (!witchHealUsed && nightKillTarget !== -1) {
+            let deadName = players[nightKillTarget].name;
+            if (nightKillTarget === 1) {
+                addLog(`今晚被杀的是你。由于不能自救，你只能选择是否毒人。`);
+                askPoison();
+            } else {
+                addLog(`今晚 <strong style="color:var(--aventurine-gold)">${deadName}</strong> 被杀了，你要使用灵药救他吗？`);
+                showOptions([
+                    {label: "使用灵药救人", val: 'heal'},
+                    {label: "不救，进入毒药阶段", val: 'no_heal'}
+                ], (choice) => {
+                    if (choice === 'heal') {
+                        savedByWitch = true;
+                        witchHealUsed = true;
+                        simulateNight(); // 救了人一般不能再毒人（标准规则）
+                    } else {
+                        askPoison();
+                    }
+                });
+            }
+        } else {
+            askPoison();
+        }
+    }
+
+    function askPoison() {
+        if (!witchPoisonUsed) {
+            addLog("你手中的毒药正微微发烫。今晚要带走谁吗？");
+            let opts = [{label: "不使用毒药", val: -1}];
+            players.forEach(p => { if(p.alive && p.id !== 1) opts.push({label: `毒死 ${p.id+1}号 ${p.name}`, val: p.id}); });
+            showOptions(opts, (val) => {
+                if (val !== -1) {
+                    witchPoisonTarget = val;
+                    witchPoisonUsed = true;
+                }
+                simulateNight();
+            });
+        } else {
+            addLog("你已没有毒药，今晚平安度过。");
+            setTimeout(simulateNight, 1000);
+        }
+    }
+
+    function simulateNight() {
+        hideOptions();
+        
+        let deadTonight = [];
+        // 结算死亡逻辑：狼人杀人 - 守卫守护 - 女巫救人
+        if(nightKillTarget !== -1 && nightKillTarget !== guardTarget && !savedByWitch) {
+            deadTonight.push(nightKillTarget);
+        }
+        // 毒药无视守护
+        if(witchPoisonTarget !== -1) {
+            deadTonight.push(witchPoisonTarget);
+        }
+        
+        [...new Set(deadTonight)].forEach(id => { if(id !== -1) players[id].alive = false; });
+        
+        setTimeout(startDay, 1500, [...new Set(deadTonight)]);
+    }
+
+    function startDay(deadList) {
+        renderPlayers();
+        addLog(`<br>--- 第 ${round} 天 ---`, true);
+        if(deadList.length > 0) {
+          let deadNames = deadList.map(id => players[id].name).join(', ');
+          addLog(`昨晚是个惨痛的夜晚，<strong style="color:red;">${deadNames}</strong> 倒牌了。`);
+        } else {
+          addLog("昨晚是个平安夜，所有人都看到了今天的太阳。");
+        }
+        
+        if(checkWinCondition()) return;
+        setTimeout(() => startSpeeches(0), 1000);
+    }
+
+    function getNpcSpeech(p) {
+        let suspects = players.filter(v => v.alive && v.id !== p.id);
+        let target = suspects.length > 0 ? suspects[Math.floor(Math.random()*suspects.length)] : {name: "空气"};
+        
+        if(p.name === '砂金') {
+          if(p.role === '狼人') {
+            return [`哎呀，朋友们，别这么看着我。我可是良民。`, `我觉得${target.name}不太对劲哦。`, `信我，这笔交易稳赚不赔。`, `拉帝奥教授，这回我真没撒谎。`][round % 4];
+          } else {
+            return [`有人在演戏，而且演技很拙劣。`, `朋友，那个${target.name}，敢不敢跟我对赌一把身份？`, `我是神职，不想死就别投我。`, `真理医生如果死了，那我就是场上最聪明的人了。`][round % 4];
+          }
+        }
+        if(p.name === '拉帝奥') {
+          return [`零分。在座各位的发言毫无逻辑可言。`, `基于目前样本，${target.name}的行为极不理性。`, `愚蠢。建议重点关注混淆视听的人。`, `我是闭眼玩家，但我有脑子。`][round % 4];
+        }
+        if(p.name === '托帕') {
+          return [`账账说那个人身上有狼的味道。`, `这局没什么有用的信息，建议稳一手。`, `我是好人，投我出去你们会后悔的。`, `为了好人的胜利，${target.name}必须出局。`][round % 4];
+        }
+        return `我是好人，过。`;
+    }
+
+    function startSpeeches(playerIndex) {
+        if(playerIndex >= players.length) { startVoting(); return; }
+        const p = players[playerIndex];
+        
+        if(!p.alive) { startSpeeches(playerIndex + 1); return; }
+        
+        if(p.isUser) {
+          generateUserSpeechOptions((speech) => {
+          addLog(`<strong>${p.id+1}.${p.name}:</strong> ${speech}`);
+          startSpeeches(playerIndex + 1);
+          });
+        } else {
+          let speech = getNpcSpeech(p);
+          setTimeout(() => {
+          addLog(`<strong>${p.id+1}.${p.name}:</strong> ${speech}`);
+          startSpeeches(playerIndex + 1);
+          }, 1000 + Math.random() * 500);
+        }
+    }
+
+    function generateUserSpeechOptions(callback) {
+        addLog("轮到你了，请选择你的发言：");
+        let opts = [
+          "（打哈欠）太困了...我是好人，过。",
+          "我是平民。能不能快点结束？我还要回去写报告...",
+          "我觉得砂金总监一直在笑，真的很可疑！"
+        ];
+        if(players[4].alive) opts.push("我相信拉帝奥教授的判断，听他的准没错。");
+        if(players[1].role === '预言家') opts.push("我是预言家！昨晚验了，信我！");
+
+        let displayOpts = opts.sort(() => 0.5 - Math.random()).slice(0, 4);
+        showOptions(displayOpts.map(t => ({label: t, val: t})), (val) => { hideOptions(); callback(val); });
+    }
+
+    function startVoting() {
+        if(!players[1].alive) {
+          addLog("<br>--- 投票阶段 (你已出局) ---", true);
+          setTimeout(() => resolveVotes(-1), 2000);
+          return;
+        }
+        addLog("<br>--- 投票阶段 ---", true);
+        let options = [];
+        players.forEach(p => { if(p.alive && p.id !== 1) options.push({label: `投给 ${p.id+1}号 ${p.name}`, val: p.id}); });
+        options.push({label: "弃权", val: -1});
+        showOptions(options, (userVote) => { hideOptions(); resolveVotes(userVote); });
+    }
+
+    function resolveVotes(userVote) {
+        let voteCounts = {};
+        players.forEach(p => voteCounts[p.id] = 0);
+        players.forEach(p => {
+          if(!p.alive) return; 
+          if(p.isUser) { if(userVote !== -1) voteCounts[userVote]++; }
+          else {
+            let targets = players.filter(t => t.alive && t.id !== p.id);
+            if(targets.length > 0) voteCounts[targets[Math.floor(Math.random()*targets.length)].id]++;
+          }
+        });
+
+        let maxVotes = 0, eliminated = -1, isTie = false;
+        for(let pid in voteCounts) {
+          if(voteCounts[pid] > maxVotes) { maxVotes = voteCounts[pid]; eliminated = pid; isTie = false; }
+          else if(voteCounts[pid] === maxVotes && maxVotes > 0) isTie = true;
+        }
+
+        let summary = "<strong>投票结果：</strong><br>";
+        for(let pid in voteCounts) { if(voteCounts[pid] > 0) summary += `${players[pid].name}: ${voteCounts[pid]}票<br>`; }
+        addLog(summary, true);
+
+        if(eliminated !== -1 && !isTie) {
+          addLog(`经过公投，<strong>${players[eliminated].name}</strong> 被放逐出局。`);
+          players[eliminated].alive = false;
+        } else {
+          addLog("平票或无人得票，无人出局。");
+        }
+        
+        renderPlayers();
+        if(checkWinCondition()) return;
+        round++; 
+        setTimeout(startNight, 2000);
+    }
+
+    function checkWinCondition() {
+        let wolves = players.filter(p => p.alive && p.role === '狼人').length;
+        let goods = players.filter(p => p.alive && p.role !== '狼人').length;
+        if(wolves === 0) { endGame('好人阵营胜利！'); return true; }
+        if(wolves >= goods) { endGame('狼人阵营胜利！'); return true; }
+        return false;
+    }
+
+    function endGame(reason) {
+        turnPhase = 'end';
+        setTimeout(() => {
+          document.getElementById('screen-game').classList.add('hidden');
+          document.getElementById('screen-end').classList.remove('hidden');
+          document.getElementById('winner-title').innerText = reason;
+          document.getElementById('end-reason').innerText = `游戏在第 ${round} 天落幕。`;
+          document.getElementById('end-roles').innerHTML = players.map(p => `<div>${p.name}: <strong style="color:var(--aventurine-gold)">${p.role}</strong> ${p.alive ? '' : '(亡)'}</div>`).join('');
+        }, 1500);
+    }
+
+    function showOptions(opts, callback) {
+        actionPanel.innerHTML = '';
+        opts.forEach(o => {
+          let btn = document.createElement('button');
+          btn.className = 'option-btn';
+          btn.innerText = o.label;
+          btn.onclick = () => callback(o.val);
+          actionPanel.appendChild(btn);
+        });
+        actionPanel.style.display = 'block';
+    }
+
+    function hideOptions() { actionPanel.style.display = 'none'; }
+
+    function showReflection(who) { 
+        if(who === 'char') openModal(`<strong>砂金的玩后感：</strong>\n\n“哎呀，${USER_NAME}，这场游戏可真是精彩。看着你努力想要保护那位‘拉帝奥教授’，我可是忍笑忍得很辛苦呢。下次，不如只有我们两个单独玩？”`);
+        else openModal(`<strong>${USER_NAME}的玩后感：</strong>\n\n“终于结束了...我的头好痛。为什么要连玩个放松的游戏都要这么费脑子？！”`);
+    }
+    
+    function openModal(text) {
+        document.getElementById('modal-text').innerHTML = text.replace(/\n/g, '<br>');
+        document.getElementById('thought-modal').classList.add('show');
+    }
+    function closeModal() { document.getElementById('thought-modal').classList.remove('show'); }
+</script>
+
+</body>
+</html>
